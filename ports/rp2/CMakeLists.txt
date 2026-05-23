@@ -97,6 +97,7 @@ project(${MICROPY_TARGET})
 
 pico_sdk_init()
 
+include(${MICROPY_DIR}/py/manifest.cmake)
 include(${MICROPY_DIR}/py/usermod.cmake)
 
 add_executable(${MICROPY_TARGET})
