@@ -260,10 +260,9 @@ if(MICROPY_FROZEN_MANIFEST)
 
     # Note: target_compile_definitions already added earlier.
 
-    if(NOT MICROPY_LIB_DIR)
-        list(APPEND GIT_SUBMODULES lib/micropython-lib)
-        set(MICROPY_LIB_DIR ${MICROPY_DIR}/lib/micropython-lib)
-    endif()
+    # Ensure micropython-lib is included in submodule updates.
+    # MICROPY_LIB_DIR is set in py.cmake, so always add to GIT_SUBMODULES.
+    list(APPEND GIT_SUBMODULES lib/micropython-lib)
 
     if(NOT UPDATE_SUBMODULES AND NOT EXISTS ${MICROPY_LIB_DIR}/README.md)
         message(FATAL_ERROR " micropython-lib not initialized.\n Run 'make BOARD=${MICROPY_BOARD} submodules'")
@@ -278,9 +277,12 @@ if(MICROPY_FROZEN_MANIFEST)
         if(NOT MICROPY_MAKE_EXECUTABLE)
             set(MICROPY_MAKE_EXECUTABLE make)
         endif()
+        # Clear USER_C_MODULES and FROZEN_MANIFEST so a port build with
+        # those set doesn't leak them into the mpy-cross sub-make and cause
+        # manifest.mk to try parsing an unrelated manifest from the wrong cwd.
         add_custom_command(
             OUTPUT ${MICROPY_MPYCROSS_DEPENDENCY}
-            COMMAND ${MICROPY_MAKE_EXECUTABLE} -C ${MICROPY_DIR}/mpy-cross USER_C_MODULES=
+            COMMAND ${MICROPY_MAKE_EXECUTABLE} -C ${MICROPY_DIR}/mpy-cross USER_C_MODULES= FROZEN_MANIFEST=
         )
     endif()
 
@@ -290,22 +292,23 @@ if(MICROPY_FROZEN_MANIFEST)
         set(MICROPY_CROSS_FLAGS "-f${MICROPY_CROSS_FLAGS}")
     endif()
 
-    # Set default path variables to be passed to makemanifest.py. These will
-    # be available in path substitutions. Additional variables can be set
-    # per-board in mpconfigboard.cmake.
-    set(MICROPY_MANIFEST_PORT_DIR ${MICROPY_PORT_DIR})
-    set(MICROPY_MANIFEST_BOARD_DIR ${MICROPY_BOARD_DIR})
-    set(MICROPY_MANIFEST_MPY_DIR ${MICROPY_DIR})
-    set(MICROPY_MANIFEST_MPY_LIB_DIR ${MICROPY_LIB_DIR})
-
-    # Find all MICROPY_MANIFEST_* variables and turn them into command line arguments.
-    get_cmake_property(_manifest_vars VARIABLES)
-    list(FILTER _manifest_vars INCLUDE REGEX "MICROPY_MANIFEST_.*")
-    foreach(_manifest_var IN LISTS _manifest_vars)
-        list(APPEND _manifest_var_args "-v")
-        string(REGEX REPLACE "MICROPY_MANIFEST_(.*)" "\\1" _manifest_var_name ${_manifest_var})
-        list(APPEND _manifest_var_args "${_manifest_var_name}=${${_manifest_var}}")
-    endforeach()
+    # Set MICROPY_MANIFEST_* and build _manifest_var_args here only if
+    # py/manifest.cmake didn't already populate them.
+    if(NOT _manifest_var_args)
+        set(MICROPY_MANIFEST_PORT_DIR ${MICROPY_PORT_DIR})
+        set(MICROPY_MANIFEST_BOARD_DIR ${MICROPY_BOARD_DIR})
+        set(MICROPY_MANIFEST_MPY_DIR ${MICROPY_DIR})
+        if(EXISTS "${MICROPY_LIB_DIR}/README.md")
+            set(MICROPY_MANIFEST_MPY_LIB_DIR ${MICROPY_LIB_DIR})
+        endif()
+        get_cmake_property(_manifest_vars VARIABLES)
+        list(FILTER _manifest_vars INCLUDE REGEX "MICROPY_MANIFEST_.*")
+        foreach(_manifest_var IN LISTS _manifest_vars)
+            list(APPEND _manifest_var_args "-v")
+            string(REGEX REPLACE "MICROPY_MANIFEST_(.*)" "\\1" _manifest_var_name ${_manifest_var})
+            list(APPEND _manifest_var_args "${_manifest_var_name}=${${_manifest_var}}")
+        endforeach()
+    endif()
 
     add_custom_target(
         BUILD_FROZEN_CONTENT ALL
