@@ -72,10 +72,10 @@ def stdout_write_bytes(b: bytes):
                 pass
             elif e.start > 0:
                 # Write valid prefix, keep incomplete/invalid suffix
-                valid_bytes = _stdout_buffer[:e.start]
+                valid_bytes = _stdout_buffer[: e.start]
                 sys.stdout.buffer.write(valid_bytes)
                 sys.stdout.buffer.flush()
-                _stdout_buffer = _stdout_buffer[e.start:]
+                _stdout_buffer = _stdout_buffer[e.start :]
                 # If remaining is just incomplete trailing bytes, keep them
                 # If it's invalid, write with replacement
                 if len(_stdout_buffer) > 4:  # Max UTF-8 sequence is 4 bytes
@@ -288,7 +288,9 @@ class Transport:
 
     _VALID_ENCODINGS = ("deflate", "base64", "repr")
 
-    def fs_writefile(self, dest, data, chunk_size=None, progress_callback=None, encoding=None, verify_hash=False):
+    def fs_writefile(
+        self, dest, data, chunk_size=None, progress_callback=None, encoding=None, verify_hash=False
+    ):
         """Write data to a file on the device.
 
         Automatically selects the best encoding based on device capabilities and
@@ -337,21 +339,24 @@ class Transport:
             # Setup imports and file handle on device
             if encoding == "deflate":
                 self.exec(
-                    hash_setup
-                    + "from binascii import a2b_base64\n"
+                    hash_setup + "from binascii import a2b_base64\n"
                     "from io import BytesIO\n"
                     "from deflate import DeflateIO,RAW\n"
-                    "f=open(%s,'wb')\nw=f.write" % _quote_path(dest)
-                    + hash_update_suffix
+                    "f=open(%s,'wb')\nw=f.write" % _quote_path(dest) + hash_update_suffix
                 )
             elif encoding == "base64":
                 self.exec(
                     hash_setup
-                    + "from binascii import a2b_base64\nf=open(%s,'wb')\nw=f.write" % _quote_path(dest)
+                    + "from binascii import a2b_base64\nf=open(%s,'wb')\nw=f.write"
+                    % _quote_path(dest)
                     + hash_update_suffix
                 )
             else:
-                self.exec(hash_setup + "f=open(%s,'wb')\nw=f.write" % _quote_path(dest) + hash_update_suffix)
+                self.exec(
+                    hash_setup
+                    + "f=open(%s,'wb')\nw=f.write" % _quote_path(dest)
+                    + hash_update_suffix
+                )
 
             while data:
                 chunk = data[:chunk_size]
