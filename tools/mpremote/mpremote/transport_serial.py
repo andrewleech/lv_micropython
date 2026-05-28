@@ -580,6 +580,8 @@ class RemoteCommand:
         self.fout.write(self.buf4)
 
     def wr_bytes(self, b):
+        if isinstance(b, str):
+            b = bytes(b, 'utf8')
         self.wr_s32(self.buffer_nbytes(b))
         self.fout.write(b)
 
@@ -1093,6 +1095,10 @@ class SerialIntercept:
     def inWaiting(self):
         self._check_input(False)
         return len(self.buf)
+
+    @property
+    def in_waiting(self):
+        return self.inWaiting()
 
     def read(self, n):
         while len(self.buf) < n:
